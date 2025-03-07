@@ -208,7 +208,7 @@ class UpdateUsageRequest(SimulatorBase):
     scale: Optional[str] = "1MIN"
 
 if TYPE_CHECKING:
-    from .models import DeviceUsage  # Avoid circular import
+    from .models import DeviceUsage  # type: ignore
 
 
 class ChannelUsage(SimulatorBase):

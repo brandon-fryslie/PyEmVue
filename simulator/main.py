@@ -1,7 +1,24 @@
+from typing import Optional
 from fastapi import FastAPI, Request, Response
+import datetime
+from simulator.models import (
+    SimulatorCustomer,
+    CustomerDevicesResponse,
+    SimulatorLocationProperties,
+    ChannelType,
+    StatusResponse,
+    SimulatorOutlet,
+    SimulatorChargerRequest,
+    SimulatorCharger,
+    DeviceUsageResponse,
+    CreateVueRequest,
+    SimulatorDevice,
+    CreateOutletRequest,
+    CreateChargerRequest,
+    UpdateUsageRequest
+)
 from fastapi.responses import JSONResponse
 
-from simulator.models import *
 from simulator.simulator_state import SimulatorState
 
 state = SimulatorState()

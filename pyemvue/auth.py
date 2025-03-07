@@ -1,6 +1,6 @@
 from datetime import datetime
 import time
-from typing import Any, Optional, Callable
+from typing import Optional, Callable, Dict, Union, Any
 import jwt
 import requests
 
@@ -20,8 +20,8 @@ class Auth:
         password: Optional[str] = None,
         connect_timeout: float = 6.03,
         read_timeout: float = 10.03,
-        tokens: Optional["dict[str, Any]"] = None,
-        token_updater: Optional[Callable[["dict[str, Any]"], None]] = None,
+        tokens: Optional[dict[str, str]] = None,
+        token_updater: Optional[Callable[[dict[str, Any]], None]] = None,
         max_retry_attempts: int = 5,
         initial_retry_delay: float = 0.5,
         max_retry_delay: float = 30.0,
@@ -60,7 +60,7 @@ class Auth:
             )
             self._password = password
 
-    def refresh_tokens(self) -> "dict[str, str]":
+    def refresh_tokens(self) -> Dict[str, str]:
         """Refresh and return new tokens."""
         if self._password:
             self.cognito.authenticate(password=self._password)
@@ -81,7 +81,7 @@ class Auth:
         user = self.cognito.get_user()
         return user._data["email"]
 
-    def request(self, method: str, path: str, **kwargs) -> requests.Response:
+    def request(self, method: str, path: str, **kwargs: Any) -> requests.Response:
         """Make a request."""
         if not self.tokens or not self.tokens["access_token"]:
             raise ValueError("Not authenticated. Incorrect username or password?")
@@ -117,7 +117,7 @@ class Auth:
 
         return response
 
-    def _extract_tokens_from_cognito(self) -> "dict[str, Any]":
+    def _extract_tokens_from_cognito(self) -> dict[str, str]:
         return {
             "access_token": self.cognito.access_token,
             "id_token": self.cognito.id_token,  # Emporia uses this token for authentication
@@ -142,7 +142,8 @@ class Auth:
             timeout=(self.connect_timeout, self.read_timeout),
         )
 
-    def _decode_token(self, token: str, verify_exp: bool = False) -> dict:
+    def _decode_token(self, token: str, verify_exp: bool = False) -> Dict[str, Union[str, int, float, bool, None]]:
+        # TODO: Fix "Any" type
         """Decode a JWT token and return the payload as a dictionary, without a hard dependency on pycognito."""
         if not self.pool_wellknown_jwks:
             self.pool_wellknown_jwks = requests.get(
@@ -161,6 +162,7 @@ class Auth:
             issuer=self.cognito.user_pool_url,
             options={"verify_exp": verify_exp, "verify_iat": False, "verify_nbf": False},
         )
+
 
 class SimulatedAuth(Auth):
     def __init__(

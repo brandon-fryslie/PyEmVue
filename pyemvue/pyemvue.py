@@ -1,5 +1,5 @@
 import time
-from typing import Any, Optional, Union
+from typing import Optional, Union, Dict, List, Any
 import requests
 import datetime
 import json
@@ -58,7 +58,7 @@ class PyEmVue(object):
             if "msg" in j:
                 return j["msg"]
 
-    def get_devices(self) -> "list[VueDevice]":
+    def get_devices(self) -> List[VueDevice]:
         """Get all devices under the current customer account."""
         response = self.auth.request("get", API_CUSTOMER_DEVICES)
         response.raise_for_status()
@@ -104,14 +104,14 @@ class PyEmVue(object):
 
     def get_device_list_usage(
         self,
-        deviceGids: Union[str, "list[str]"],
+        deviceGids: Union[str, list[str]],
         instant: Optional[datetime.datetime],
         scale=Scale.SECOND.value,
         unit=Unit.KWH.value,
         max_retry_attempts: int = 5,
         initial_retry_delay: float = 2.0,
         max_retry_delay: float = 30.0,
-    ) -> "dict[int, VueUsageDevice]":
+    ) -> Dict[int, VueUsageDevice]:
         """Returns a nested dictionary of VueUsageDevice and VueDeviceChannelUsage with the total usage of the devices over the specified scale. Note that you may need to scale this to get a rate (1MIN in kw = 60*result)"""
         if not instant:
             instant = datetime.datetime.now(datetime.timezone.utc)
@@ -172,7 +172,7 @@ class PyEmVue(object):
         end: Optional[datetime.datetime] = None,
         scale=Scale.SECOND.value,
         unit=Unit.KWH.value,
-    ) -> "tuple[list[float], Optional[datetime.datetime]]":
+    ) -> tuple[List[float], Optional[datetime.datetime]]:
         """Gets the usage over a given time period and the start of the measurement period. Note that you may need to scale this to get a rate (1MIN in kw = 60*result)"""
         if channel.channel_num in ["MainsFromGrid", "MainsToGrid"]:
             # This is not populated for the special Mains data as of right now
@@ -201,7 +201,7 @@ class PyEmVue(object):
                 usage = j["usageList"]
         return usage, instant
 
-    def get_outlets(self) -> "list[OutletDevice]":
+    def get_outlets(self) -> List[OutletDevice]:
         """Return a list of outlets linked to the account. Deprecated, use get_devices_status instead."""
         response = self.auth.request("get", API_GET_STATUS)
         response.raise_for_status()
@@ -226,7 +226,7 @@ class PyEmVue(object):
         outlet.from_json_dictionary(response.json())
         return outlet
 
-    def get_chargers(self) -> "list[ChargerDevice]":
+    def get_chargers(self) -> List[ChargerDevice]:
         """Return a list of EVSEs/chargers linked to the account. Deprecated, use get_devices_status instead."""
         response = self.auth.request("get", API_GET_STATUS)
         response.raise_for_status()
@@ -257,7 +257,7 @@ class PyEmVue(object):
 
     def get_devices_status(
         self, device_list: Optional["list[VueDevice]"] = None
-    ) -> "tuple[list[OutletDevice], list[ChargerDevice]]":
+    ) -> tuple[List[OutletDevice], List[ChargerDevice]]:
         """Gets the list of outlets and chargers. If device list is provided, updates the connected status on each device."""
         response = self.auth.request("get", API_GET_STATUS)
         response.raise_for_status()
@@ -286,7 +286,7 @@ class PyEmVue(object):
 
         return (outlets, chargers)
 
-    def get_channel_types(self) -> "list[ChannelType]":
+    def get_channel_types(self) -> List[ChannelType]:
         """Gets the list of channel types"""
         response = self.auth.request("get", API_CHANNEL_TYPES)
         response.raise_for_status()
@@ -300,7 +300,7 @@ class PyEmVue(object):
                     )
         return channel_types
 
-    def get_vehicles(self) -> "list[Vehicle]":
+    def get_vehicles(self) -> List[Vehicle]:
         """Get all vehicles under the current customer account."""
         response = self.auth.request("get", API_VEHICLES)
         response.raise_for_status()

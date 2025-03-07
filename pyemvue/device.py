@@ -1,5 +1,5 @@
 import datetime
-from typing import Any, Optional
+from typing import Optional, Union, Dict
 from typing_extensions import Self
 from dateutil.parser import parse
 
@@ -40,7 +40,7 @@ class VueDevice(object):
         self.longitude = 0
         self.utility_rate_gid = None
 
-    def from_json_dictionary(self, js: "dict[str, Any]") -> Self:
+    def from_json_dictionary(self, js: Dict[str, Union[str, int, float, bool, None]]) -> Self:
         """Populate device data from a dictionary extracted from the response json."""
         if "deviceGid" in js:
             self.device_gid = js["deviceGid"]
@@ -77,11 +77,11 @@ class VueDevice(object):
             try:
                 if "offlineSince" in con and con["offlineSince"]:
                     self.offline_since = parse(con["offlineSince"])
-            except:
+            except Exception as e:
                 self.offline_since = datetime.datetime.min
         return self
 
-    def populate_location_properties_from_json(self, js: "dict[str, Any]"):
+    def populate_location_properties_from_json(self, js: Dict[str, Union[str, int, float, bool, None]]):
         """Adds the values from the get_device_properties method."""
         if "deviceName" in js:
             self.device_name = js["deviceName"]
@@ -143,7 +143,7 @@ class VueDeviceChannel(object):
         self.nested_devices = {}
         self.type = ""
 
-    def from_json_dictionary(self, js: "dict[str, Any]") -> Self:
+    def from_json_dictionary(self, js: Dict[str, Union[str, int, float, bool, None]]) -> Self:
         """Populate device channel data from a dictionary extracted from the response json."""
         if "deviceGid" in js:
             self.device_gid = js["deviceGid"]
@@ -158,10 +158,10 @@ class VueDeviceChannel(object):
         if "type" in js:
             self.type = js["type"]
         return self
-    
+
     # Known types: Main, FiftyAmp, FiftyAmpBidirectional
 
-    def as_dictionary(self) -> "dict[str, Any]":
+    def as_dictionary(self) -> Dict[str, Union[str, int, float]]:
         """Returns a dictionary of the device channel data."""
         return {
             "deviceGid": self.device_gid,
@@ -178,7 +178,7 @@ class VueUsageDevice(VueDevice):
         self.timestamp = timestamp
         self.channels: dict[str, VueDeviceChannelUsage] = {}
 
-    def from_json_dictionary(self, js: "dict[str, Any]") -> Self:
+    def from_json_dictionary(self, js: Dict[str, Union[str, int, float, bool, None]]) -> Self:
         if not js:
             return self
         if "deviceGid" in js:
@@ -211,7 +211,7 @@ class VueDeviceChannelUsage(VueDeviceChannel):
         self.timestamp = timestamp
         self.nested_devices = {}
 
-    def from_json_dictionary(self, js: "dict[str, Any]") -> Self:
+    def from_json_dictionary(self, js: Dict[str, Union[str, int, float, bool, None]]) -> Self:
         """Populate device channel usage data from a dictionary extracted from the response json."""
         if not js:
             return self
@@ -247,7 +247,7 @@ class OutletDevice(object):
         self.load_gid: int = 0
         self.schedules = []
 
-    def from_json_dictionary(self, js: "dict[str, Any]") -> Self:
+    def from_json_dictionary(self, js: Dict[str, Union[str, int, bool, None]]) -> Self:
         if "deviceGid" in js:
             self.device_gid = js["deviceGid"]
         if "outletOn" in js:
@@ -257,7 +257,7 @@ class OutletDevice(object):
         # don't have support for schedules yet
         return self
 
-    def as_dictionary(self) -> "dict[str, Any]":
+    def as_dictionary(self) -> Dict[str, Union[str, int, bool]]:
         return {
             "deviceGid": self.device_gid,
             "outletOn": self.outlet_on,
@@ -284,7 +284,7 @@ class ChargerDevice(object):
         self.pro_control_code = ""
         self.breaker_pin = ""
 
-    def from_json_dictionary(self, js: "dict[str, Any]") -> Self:
+    def from_json_dictionary(self, js: Dict[str, Union[str, int, bool, None]]) -> Self:
         if "deviceGid" in js:
             self.device_gid = js["deviceGid"]
         if "loadGid" in js:
@@ -318,7 +318,7 @@ class ChargerDevice(object):
         # don't have support for schedules yet
         return self
 
-    def as_dictionary(self) -> "dict[str, Any]":
+    def as_dictionary(self) -> Dict[str, Union[str, int, bool]]:
         d = {
             "deviceGid": self.device_gid,
             "loadGid": self.load_gid,
@@ -339,7 +339,7 @@ class ChannelType(object):
         self.description = description
         self.selectable = selectable
 
-    def from_json_dictionary(self, js: "dict[str, Any]") -> Self:
+    def from_json_dictionary(self, js: dict[str, Union[str, int, bool, None]]) -> Self:
         if "channelTypeGid" in js:
             self.channel_type_gid = js["channelTypeGid"]
         if "description" in js:
@@ -370,7 +370,7 @@ class Vehicle(object):
         self.model = model
         self.year = year
 
-    def from_json_dictionary(self, js):
+    def from_json_dictionary(self, js: Dict[str, Union[str, int, None]]) -> Self:
         if "vehicleGid" in js:
             self.vehicle_gid = js["vehicleGid"]
         if "vendor" in js:
@@ -389,7 +389,7 @@ class Vehicle(object):
             self.year = js["year"]
         return self
 
-    def as_dictionary(self) -> "dict[str, Any]":
+    def as_dictionary(self) -> Dict[str, Union[str, int]]:
         return {
             "vehicleGid": self.vehicle_gid,
             "vendor": self.vendor,
@@ -425,7 +425,7 @@ class VehicleStatus(object):
         self.charge_current_request = chargeCurrentRequest
         self.charge_current_request_max = chargeCurrentRequestMax
 
-    def from_json_dictionary(self, js):
+    def from_json_dictionary(self, js: Dict[str, Union[str, int, None]]) -> Self:
         jsv = {}
         if "settings" in js:
             jsv = js["settings"]
@@ -451,7 +451,7 @@ class VehicleStatus(object):
 
         return self
 
-    def as_dictionary(self) -> "dict[str, Any]":
+    def as_dictionary(self) -> dict[str, Union[str, int]]:
         return {
             "vehicleGid": self.vehicle_gid,
             "vehicleState": self.vehicle_state,
