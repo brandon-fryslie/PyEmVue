@@ -1,6 +1,12 @@
 from datetime import datetime
 import time
-from typing import Optional, Callable, Dict, Union, Any
+from typing import Optional, Callable, Dict, Union, TypeAlias, Any
+
+# Type Aliases
+TokenDict: TypeAlias = Dict[str, str]
+
+# Type Aliases
+TokenDict: TypeAlias = Dict[str, str]
 import jwt
 import requests
 
@@ -20,8 +26,8 @@ class Auth:
         password: Optional[str] = None,
         connect_timeout: float = 6.03,
         read_timeout: float = 10.03,
-        tokens: Optional[dict[str, str]] = None,
-        token_updater: Optional[Callable[[dict[str, Any]], None]] = None,
+        tokens: Optional[TokenDict] = None,
+        token_updater: Optional[Callable[[TokenDict], None]] = None,
         max_retry_attempts: int = 5,
         initial_retry_delay: float = 0.5,
         max_retry_delay: float = 30.0,
@@ -60,7 +66,7 @@ class Auth:
             )
             self._password = password
 
-    def refresh_tokens(self) -> Dict[str, str]:
+    def refresh_tokens(self) -> TokenDict:
         """Refresh and return new tokens."""
         if self._password:
             self.cognito.authenticate(password=self._password)
@@ -117,7 +123,7 @@ class Auth:
 
         return response
 
-    def _extract_tokens_from_cognito(self) -> dict[str, str]:
+    def _extract_tokens_from_cognito(self) -> TokenDict:
         return {
             "access_token": self.cognito.access_token,
             "id_token": self.cognito.id_token,  # Emporia uses this token for authentication
@@ -143,7 +149,6 @@ class Auth:
         )
 
     def _decode_token(self, token: str, verify_exp: bool = False) -> Dict[str, Union[str, int, float, bool, None]]:
-        # TODO: Fix "Any" type
         """Decode a JWT token and return the payload as a dictionary, without a hard dependency on pycognito."""
         if not self.pool_wellknown_jwks:
             self.pool_wellknown_jwks = requests.get(
@@ -175,7 +180,7 @@ class SimulatedAuth(Auth):
         self.read_timeout = 10.03
         self.tokens = self.refresh_tokens()
 
-    def refresh_tokens(self) -> dict[str, str]:
+    def refresh_tokens(self) -> TokenDict:
         return {"id_token": "simulator"}
 
     def get_username(self) -> str:

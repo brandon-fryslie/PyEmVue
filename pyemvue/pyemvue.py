@@ -1,5 +1,14 @@
 import time
-from typing import Optional, Union, Dict, List, Any
+from typing import Optional, Union, Dict, List, TypeAlias, Callable, Tuple, Any
+
+# Type Aliases
+JsonDict: TypeAlias = Dict[str, Union[str, int, float, bool, None]]
+DeviceList: TypeAlias = List[VueDevice]
+UsageDict: TypeAlias = Dict[int, VueUsageDevice]
+
+# Type Aliases
+JsonDict: TypeAlias = Dict[str, Union[str, int, float, bool, None]]
+TokenDict: TypeAlias = Dict[str, str]
 import requests
 import datetime
 import json
@@ -48,7 +57,7 @@ class PyEmVue(object):
         self.connect_timeout = connect_timeout
         self.read_timeout = read_timeout
 
-    def down_for_maintenance(self) -> Optional[str]:
+    def down_for_maintenance(self) -> Optional[str | None]:
         """Checks to see if the API is down for maintenance, returns the reported message if present."""
         response = requests.get(API_MAINTENANCE)
         if response.status_code == 404:
@@ -58,7 +67,7 @@ class PyEmVue(object):
             if "msg" in j:
                 return j["msg"]
 
-    def get_devices(self) -> List[VueDevice]:
+    def get_devices(self) -> DeviceList:
         """Get all devices under the current customer account."""
         response = self.auth.request("get", API_CUSTOMER_DEVICES)
         response.raise_for_status()
@@ -93,7 +102,7 @@ class PyEmVue(object):
             channel.from_json_dictionary(j)
         return channel
 
-    def get_customer_details(self) -> Optional[Customer]:
+    def get_customer_details(self) -> Optional[Customer | None]:
         """Get details for the current customer."""
         response = self.auth.request("get", API_CUSTOMER)
         response.raise_for_status()
@@ -104,14 +113,14 @@ class PyEmVue(object):
 
     def get_device_list_usage(
         self,
-        deviceGids: Union[str, list[str]],
+        deviceGids: Union[str, List[str]],
         instant: Optional[datetime.datetime],
         scale=Scale.SECOND.value,
         unit=Unit.KWH.value,
         max_retry_attempts: int = 5,
         initial_retry_delay: float = 2.0,
         max_retry_delay: float = 30.0,
-    ) -> Dict[int, VueUsageDevice]:
+    ) -> UsageDict:
         """Returns a nested dictionary of VueUsageDevice and VueDeviceChannelUsage with the total usage of the devices over the specified scale. Note that you may need to scale this to get a rate (1MIN in kw = 60*result)"""
         if not instant:
             instant = datetime.datetime.now(datetime.timezone.utc)
@@ -172,7 +181,7 @@ class PyEmVue(object):
         end: Optional[datetime.datetime] = None,
         scale=Scale.SECOND.value,
         unit=Unit.KWH.value,
-    ) -> tuple[List[float], Optional[datetime.datetime]]:
+    ) -> Tuple[List[float], Optional[datetime.datetime]]:
         """Gets the usage over a given time period and the start of the measurement period. Note that you may need to scale this to get a rate (1MIN in kw = 60*result)"""
         if channel.channel_num in ["MainsFromGrid", "MainsToGrid"]:
             # This is not populated for the special Mains data as of right now
@@ -213,9 +222,7 @@ class PyEmVue(object):
                     outlets.append(OutletDevice().from_json_dictionary(raw_outlet))
         return outlets
 
-    def update_outlet(
-        self, outlet: OutletDevice, on: Optional[bool] = None
-    ) -> OutletDevice:
+    def update_outlet(self, outlet: OutletDevice, on: Optional[bool] = None) -> OutletDevice:
         """Primarily to turn an outlet on or off. If the on parameter is not provided then uses the value in the outlet object.
         If on parameter provided uses the provided value."""
         if on is not None:
@@ -256,8 +263,8 @@ class PyEmVue(object):
         return charger
 
     def get_devices_status(
-        self, device_list: Optional["list[VueDevice]"] = None
-    ) -> tuple[List[OutletDevice], List[ChargerDevice]]:
+        self, device_list: Optional[List[VueDevice]] = None
+    ) -> Tuple[List[OutletDevice], List[ChargerDevice]]:
         """Gets the list of outlets and chargers. If device list is provided, updates the connected status on each device."""
         response = self.auth.request("get", API_GET_STATUS)
         response.raise_for_status()
@@ -311,7 +318,7 @@ class PyEmVue(object):
                 vehicles.append(Vehicle().from_json_dictionary(veh))
         return vehicles
 
-    def get_vehicle_status(self, vehicle_gid: int) -> Optional[VehicleStatus]:
+    def get_vehicle_status(self, vehicle_gid: int) -> Optional[VehicleStatus | None]:
         """Get details for the current vehicle."""
         url = API_VEHICLE_STATUS.format(vehicleGid=vehicle_gid)
         response = self.auth.request("get", url)
@@ -377,15 +384,13 @@ class PyEmVue(object):
             self._store_tokens(self.auth.tokens)
         return self.customer is not None
 
-    def login_simulator(
-        self, host: str, username: Optional[str] = None, password: Optional[str] = None
-    ) -> bool:
+    def login_simulator(self, host: str, username: Optional[str] = None, password: Optional[str] = None) -> bool:
         self.username = username.lower() if username else None
         self.auth = SimulatedAuth(host=host, username=self.username, password=password)
         self.customer = self.get_customer_details()
         return self.customer is not None
 
-    def _store_tokens(self, tokens: "dict[str, Any]"):
+    def _store_tokens(self, tokens: TokenDict) -> None:
         if not self.token_storage_file:
             return
         if self.username:

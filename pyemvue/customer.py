@@ -1,5 +1,8 @@
 import datetime
-from typing import Dict, Union
+from typing import Dict, Union, TypeAlias
+
+# Type Aliases
+JsonDict: TypeAlias = Dict[str, Union[str, int, float, bool, None]]
 from typing_extensions import Self
 
 
@@ -18,7 +21,7 @@ class Customer(object):
         self.last_name = lastName
         self.created_at = createdAt
 
-    def from_json_dictionary(self, js: Dict[str, Union[str, int, float, bool, None]]) -> Self:
+    def from_json_dictionary(self, js: JsonDict) -> Self:
         """Populate customer data from a dictionary extracted from the response json."""
         if "customerGid" in js:
             self.customer_gid = js["customerGid"]
