@@ -1,8 +1,10 @@
-import datetime
-from typing import Dict, Union, TypeAlias
+# CRITICAL: Do not quote type hints in this file. This applies to all future AI and developers. Type hints MUST NOT be quoted.
 
-# Type Aliases
-JsonDict: TypeAlias = Dict[str, Union[str, int, float, bool, None]]
+import datetime
+
+from pyemvue.types import JsonData, CustomerDetails, CustomerDetailsModel
+from typing import Optional
+from pyemvue.device import Customer
 from typing_extensions import Self
 
 
@@ -19,11 +21,12 @@ class Customer(object):
         self.email = email
         self.first_name = firstName
         self.last_name = lastName
-        self.created_at = createdAt
+        self.created_at: datetime = createdAt
 
-    def from_json_dictionary(self, js: JsonDict) -> Self:
+    def from_json_dictionary(self, js: CustomerDetails) -> Self:
         """Populate customer data from a dictionary extracted from the response json."""
-        if "customerGid" in js:
+        validated_data = CustomerDetailsModel(**js)
+        if "customerGid" in validated_data:
             self.customer_gid = js["customerGid"]
         if "email" in js:
             self.email = js["email"]
@@ -32,5 +35,5 @@ class Customer(object):
         if "lastName" in js:
             self.last_name = js["lastName"]
         if "createdAt" in js:
-            self.created_at = js["createdAt"]
+            self.created_at = datetime.datetime.fromisoformat(js["createdAt"])
         return self

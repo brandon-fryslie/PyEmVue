@@ -1,25 +1,29 @@
+# CRITICAL: Do not quote type hints in this file. This applies to all future AI and developers. Type hints MUST NOT be quoted.
+
 import sys
 import datetime
 import dateutil
 
 # Our files
 from pyemvue.device import VueDevice, VueUsageDevice
+from pyemvue.types import DeviceUsageMap
+from typing import Dict, List, Union
 from pyemvue.enums import Scale, Unit
 from pyemvue.pyemvue import PyEmVue
 
 
 def print_recursive(
-    usage_dict: dict[int, VueUsageDevice],
-    info: dict[int, VueDevice],
+    usage_dict: DeviceUsageMap,
+    info: Dict[int, VueDevice],
     scaleBy: float = 1,
-    unit="kWh",
-    depth=0,
-):
+    unit: str = "kWh",
+    depth: int = 0,
+) -> None:
     for gid, device in usage_dict.items():
         for channelnum, channel in device.channels.items():
-            name = channel.name
+            name = channel.name or "Unknown"
             if name == "Main":
-                name = info[gid].device_name
+                name = info.get(gid, VueDevice()).device_name
             usage = channel.usage or 0
             print("-" * depth, f"{gid} {channelnum} {name} {usage*scaleBy} {unit}")
             if channel.nested_devices:
@@ -32,7 +36,7 @@ def print_recursive(
                 )
 
 
-def main():
+def main() -> None:
     errorMsg = 'Please pass a file containing the "email" and "password" as json.'
     if len(sys.argv) == 1:
         print(errorMsg)
@@ -46,8 +50,8 @@ def main():
     print()
     channelTypes = vue.get_channel_types()
     devices = vue.get_devices()
-    deviceGids: list[int] = []
-    deviceInfo: dict[int, VueDevice] = {}
+    deviceGids: List[int] = []
+    deviceInfo: Dict[int, VueDevice] = {}
     for device in devices:
         if device.device_gid not in deviceGids:
             deviceGids.append(device.device_gid)

@@ -1,12 +1,12 @@
+# CRITICAL: Do not quote type hints in this file. This applies to all future AI and developers. Type hints MUST NOT be quoted.
+
 from datetime import datetime
 import time
-from typing import Optional, Callable, Dict, Union, TypeAlias, Any
+from typing import Optional, Callable, Dict, Union
+from requests.models import Response
+from pyemvue.types import JsonData, AuthTokens
 
 # Type Aliases
-TokenDict: TypeAlias = Dict[str, str]
-
-# Type Aliases
-TokenDict: TypeAlias = Dict[str, str]
 import jwt
 import requests
 
@@ -26,8 +26,8 @@ class Auth:
         password: Optional[str] = None,
         connect_timeout: float = 6.03,
         read_timeout: float = 10.03,
-        tokens: Optional[TokenDict] = None,
-        token_updater: Optional[Callable[[TokenDict], None]] = None,
+        tokens: Optional[AuthTokens] = None,
+        token_updater: Optional[Callable[[AuthTokens], None]] = None,
         max_retry_attempts: int = 5,
         initial_retry_delay: float = 0.5,
         max_retry_delay: float = 30.0,
@@ -40,7 +40,7 @@ class Auth:
         self.initial_retry_delay = max(initial_retry_delay, 0.5)
         self.max_retry_delay = max(max_retry_delay, 0)
         self.pool_wellknown_jwks = None
-        self.tokens = {}
+        self.tokens: AuthTokens = {}
 
         self._password = None
 
@@ -66,7 +66,7 @@ class Auth:
             )
             self._password = password
 
-    def refresh_tokens(self) -> TokenDict:
+    def refresh_tokens(self) -> AuthTokens:
         """Refresh and return new tokens."""
         if self._password:
             self.cognito.authenticate(password=self._password)
@@ -87,7 +87,7 @@ class Auth:
         user = self.cognito.get_user()
         return user._data["email"]
 
-    def request(self, method: str, path: str, **kwargs: Any) -> requests.Response:
+    def request(self, method: str, path: str, **kwargs: Dict[str, Union[str, int, float, Dict]]) -> Response:
         """Make a request."""
         if not self.tokens or not self.tokens["access_token"]:
             raise ValueError("Not authenticated. Incorrect username or password?")
@@ -123,7 +123,7 @@ class Auth:
 
         return response
 
-    def _extract_tokens_from_cognito(self) -> TokenDict:
+    def _extract_tokens_from_cognito(self) -> AuthTokens:
         return {
             "access_token": self.cognito.access_token,
             "id_token": self.cognito.id_token,  # Emporia uses this token for authentication
@@ -131,7 +131,7 @@ class Auth:
             "token_type": self.cognito.token_type,
         }
 
-    def _do_request(self, method: str, path: str, **kwargs) -> requests.Response:
+    def _do_request(self, method: str, path: str, **kwargs: JsonData) -> Response:
         headers = kwargs.get("headers")
 
         if headers is None:
@@ -148,7 +148,7 @@ class Auth:
             timeout=(self.connect_timeout, self.read_timeout),
         )
 
-    def _decode_token(self, token: str, verify_exp: bool = False) -> Dict[str, Union[str, int, float, bool, None]]:
+    def _decode_token(self, token: str, verify_exp: bool = False) -> JsonData:
         """Decode a JWT token and return the payload as a dictionary, without a hard dependency on pycognito."""
         if not self.pool_wellknown_jwks:
             self.pool_wellknown_jwks = requests.get(
@@ -157,8 +157,10 @@ class Auth:
             ).json()
 
         kid = jwt.get_unverified_header(token).get("kid")
-        keys = self.pool_wellknown_jwks.get("keys")
-        key = list(filter(lambda x: x.get("kid") == kid, keys))[0]
+        keys = self.pool_wellknown_jwks.get("keys", [])
+        key = next((x for x in keys if x.get("kid") == kid), None)
+        if not key:
+            raise ValueError("Key not found for token")
         hmac_key = jwt.api_jwk.PyJWK(key).key
         return jwt.api_jwt.decode(
             token,
@@ -180,14 +182,14 @@ class SimulatedAuth(Auth):
         self.read_timeout = 10.03
         self.tokens = self.refresh_tokens()
 
-    def refresh_tokens(self) -> TokenDict:
+    def refresh_tokens(self) -> AuthTokens:
         return {"id_token": "simulator"}
 
     def get_username(self) -> str:
         """Get the username associated with the logged in user."""
         return self.username or "simulator"
 
-    def request(self, method: str, path: str, **kwargs) -> requests.Response:
+    def request(self, method: str, path: str, **kwargs: Dict[str, Union[str, int, float, Dict]]) -> requests.Response:
         """Make a request."""
         response = self._do_request(method, path, **kwargs)
 

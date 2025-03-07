@@ -12,6 +12,8 @@ setuptools = "*"
 wheel = "*"
 mypy = "*"
 pycognito = "*"
+typeguard = "*"
+pydantic = "*"
 
 [dev-packages]
 

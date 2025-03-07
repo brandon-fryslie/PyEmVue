@@ -1,12 +1,21 @@
+# CRITICAL: Do not quote type hints in this file. This applies to all future AI and developers. Type hints MUST NOT be quoted.
+
 import datetime
-from typing import Optional, Union, Dict, TypeAlias, List, Any
+from typing import Optional, Union, Dict, List, TYPE_CHECKING
 
-# Type Aliases
-JsonDict: TypeAlias = Dict[str, Union[str, int, float, bool, None]]
-ChannelList: TypeAlias = List[VueDeviceChannel]
+if TYPE_CHECKING:
+    from pyemvue.types import JsonData, DeviceResponse
 
-# Type Aliases
-JsonDict: TypeAlias = Dict[str, Union[str, int, float, bool, None]]
+from pyemvue.device import (
+    VueDeviceChannel,
+    VueDeviceChannelUsage,
+    OutletDevice,
+    ChargerDevice,
+    ChannelType,
+    Vehicle,
+    VehicleStatus
+)
+
 from typing_extensions import Self
 from dateutil.parser import parse
 
@@ -19,7 +28,7 @@ class VueDevice(object):
         self.firmware = firmwareVersion
         self.parent_device_gid: int = 0
         self.parent_channel_num: str = ""
-        self.channels: ChannelList = []
+        self.channels: List[VueDeviceChannel] = []
         self.outlet: Optional[OutletDevice] = None
         self.ev_charger: Optional[ChargerDevice] = None
 
@@ -47,7 +56,7 @@ class VueDevice(object):
         self.longitude = 0
         self.utility_rate_gid = None
 
-    def from_json_dictionary(self, js: JsonDict) -> Self:
+    def from_json_dictionary(self, js: DeviceResponse) -> Self:
         """Populate device data from a dictionary extracted from the response json."""
         if "deviceGid" in js:
             self.device_gid = js["deviceGid"]
@@ -59,16 +68,14 @@ class VueDevice(object):
             self.firmware = js["firmware"]
         if "parentDeviceGid" in js:
             self.parent_device_gid = js["parentDeviceGid"]
-        if "parentChannelNum" in js:
-            self.parent_channel_num = js["parentChannelNum"]
+        self.parent_channel_num = js.get("parentChannelNum", "")
         if "locationProperties" in js:
             self.populate_location_properties_from_json(js["locationProperties"])
         # 'devices' is empty in my system, will add support later if possible
-        if "channels" in js:
-            # Channels are another subtype and the channelNum is used in other calls
-            self.channels = []
-            for chnl in js["channels"]:
-                self.channels.append(VueDeviceChannel().from_json_dictionary(chnl))
+        self.channels = [
+            VueDeviceChannel().from_json_dictionary(chnl)
+            for chnl in js.get("channels", [])
+        ]
         # outlets are a special type
         if "outlet" in js and js["outlet"]:
             self.outlet = OutletDevice().from_json_dictionary(js["outlet"])
@@ -88,7 +95,7 @@ class VueDevice(object):
                 self.offline_since = datetime.datetime.min
         return self
 
-    def populate_location_properties_from_json(self, js: JsonDict):
+    def populate_location_properties_from_json(self, js: JsonData) -> None:
         """Adds the values from the get_device_properties method."""
         if "deviceName" in js:
             self.device_name = js["deviceName"]
@@ -126,11 +133,9 @@ class VueDevice(object):
                 self.swimming_pool = li["swimmingPool"]
             if "hotTub" in li:
                 self.hot_tub = li["hotTub"]
-        if "latitudeLongitude" in js and js["latitudeLongitude"]:
-            if "latitude" in js["latitudeLongitude"]:
-                self.latitude = js["latitudeLongitude"]["latitude"]
-            if "longitude" in js["latitudeLongitude"]:
-                self.longitude = js["latitudeLongitude"]["longitude"]
+        lat_long = js.get("latitudeLongitude", {})
+        self.latitude = lat_long.get("latitude", 0)
+        self.longitude = lat_long.get("longitude", 0)
 
 
 class VueDeviceChannel(object):
@@ -147,10 +152,10 @@ class VueDeviceChannel(object):
         self.channel_num = channelNum
         self.channel_multiplier = channelMultiplier
         self.channel_type_gid = channelTypeGid
-        self.nested_devices = {}
+        self.nested_devices: Dict[int, VueUsageDevice] = {}
         self.type = ""
 
-    def from_json_dictionary(self, js: JsonDict) -> Self:
+    def from_json_dictionary(self, js: JsonData) -> Self:
         """Populate device channel data from a dictionary extracted from the response json."""
         if "deviceGid" in js:
             self.device_gid = js["deviceGid"]
@@ -168,7 +173,9 @@ class VueDeviceChannel(object):
 
     # Known types: Main, FiftyAmp, FiftyAmpBidirectional
 
-    def as_dictionary(self) -> Dict[str, Union[str, int, float]]:
+    def as_dictionary(self) -> Dict[str, Union[str, int, bool]]:
+        """Returns a dictionary of the outlet device data."""
+        """Returns a dictionary of the device channel data."""
         """Returns a dictionary of the device channel data."""
         return {
             "deviceGid": self.device_gid,
@@ -183,9 +190,9 @@ class VueUsageDevice(VueDevice):
     def __init__(self, gid=0, timestamp: Optional[datetime.datetime] = None):
         super().__init__(gid=gid)
         self.timestamp = timestamp
-        self.channels: dict[str, VueDeviceChannelUsage] = {}
+        self.channels: Dict[str, VueDeviceChannelUsage] = {}
 
-    def from_json_dictionary(self, js: JsonDict) -> Self:
+    def from_json_dictionary(self, js: JsonData) -> Self:
         if not js:
             return self
         if "deviceGid" in js:
@@ -218,7 +225,7 @@ class VueDeviceChannelUsage(VueDeviceChannel):
         self.timestamp = timestamp
         self.nested_devices = {}
 
-    def from_json_dictionary(self, js: JsonDict) -> Self:
+    def from_json_dictionary(self, js: JsonData) -> Self:
         """Populate device channel usage data from a dictionary extracted from the response json."""
         if not js:
             return self
@@ -252,9 +259,9 @@ class OutletDevice(object):
         self.device_gid = gid
         self.outlet_on = on
         self.load_gid: int = 0
-        self.schedules = []
+        self.schedules: List[Dict[str, Union[str, int, bool]]] = []
 
-    def from_json_dictionary(self, js: JsonDict) -> Self:
+    def from_json_dictionary(self, js: JsonData) -> Self:
         if "deviceGid" in js:
             self.device_gid = js["deviceGid"]
         if "outletOn" in js:
@@ -264,7 +271,7 @@ class OutletDevice(object):
         # don't have support for schedules yet
         return self
 
-    def as_dictionary(self) -> Dict[str, Union[str, int, bool]]:
+    def as_dictionary(self) -> JsonData:
         return {
             "deviceGid": self.device_gid,
             "outletOn": self.outlet_on,
@@ -285,13 +292,13 @@ class ChargerDevice(object):
         self.charging_rate = 0
         self.max_charging_rate = 0
         self.off_peak_schedules_enabled = False
-        self.custom_schedules = []
+        self.custom_schedules: List[Dict[str, Union[str, int, bool]]] = []
         self.load_gid: int = 0
         self.debug_code = ""
         self.pro_control_code = ""
         self.breaker_pin = ""
 
-    def from_json_dictionary(self, js: Dict[str, Union[str, int, bool, None]]) -> Self:
+    def from_json_dictionary(self, js: JsonData) -> Self:
         if "deviceGid" in js:
             self.device_gid = js["deviceGid"]
         if "loadGid" in js:
@@ -346,7 +353,7 @@ class ChannelType(object):
         self.description = description
         self.selectable = selectable
 
-    def from_json_dictionary(self, js: JsonDict) -> Self:
+    def from_json_dictionary(self, js: JsonData) -> Self:
         if "channelTypeGid" in js:
             self.channel_type_gid = js["channelTypeGid"]
         if "description" in js:
@@ -377,7 +384,7 @@ class Vehicle(object):
         self.model = model
         self.year = year
 
-    def from_json_dictionary(self, js: Dict[str, Union[str, int, None]]) -> Self:
+    def from_json_dictionary(self, js: JsonData) -> Self:
         if "vehicleGid" in js:
             self.vehicle_gid = js["vehicleGid"]
         if "vendor" in js:
@@ -458,7 +465,7 @@ class VehicleStatus(object):
 
         return self
 
-    def as_dictionary(self) -> dict[str, Union[str, int]]:
+    def as_dictionary(self) -> Dict[str, Union[str, int]]:
         return {
             "vehicleGid": self.vehicle_gid,
             "vehicleState": self.vehicle_state,
